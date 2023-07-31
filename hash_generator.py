@@ -1,5 +1,6 @@
 import argparse
 import hashlib
+import logging
 import os
 import sys
 
@@ -12,6 +13,7 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description='Generate the hashes of a given file path.')
     parser.add_argument('-f', '--file')
+    parser.add_argument('-l', '--log', default='hashes.txt')
     args = parser.parse_args()
     return args
 
@@ -70,21 +72,42 @@ def generate_hashes(directory_path):
     return file_hashes
 
 
-def main(file_path):
+def setup_logging(log_file):
+    """
+        Define logging behavior.
+    """
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(message)s',
+        handlers=[
+            logging.FileHandler(log_file, mode='a'),
+            logging.StreamHandler()
+        ]
+    )
+
+
+def log_hash(filename, sha256_hash, blake3_hash):
+    """
+        Log hashes of the file.
+    """
+    logging.info("%s:", filename)
+    logging.info("    SHA-256: %s", sha256_hash)
+    logging.info("    BLAKE3: %s", blake3_hash)
+
+
+def main(file_path, log_path):
     """
         Main function
     """
+    setup_logging(log_path)
+    
     if os.path.isfile(file_path):
-        print(f"    {file_path}:")
-        print(f"        SHA-256: {generate_sha256_hash(file_path)}")
-        print(f"        BLAKE3: {generate_blake3_hash(file_path).hex()}")
+        log_hash(file_path, generate_sha256_hash(file_path), generate_blake3_hash(file_path).hex())
     elif os.path.isdir(file_path):
         hashes = generate_hashes(file_path)
         print(f"Hashes for files in the directory '{file_path}':")
         for filename, hash_values in hashes.items():
-            print(f"    {filename}:")
-            print(f"        SHA-256: {hash_values['SHA-256']}")
-            print(f"        BLAKE3: {hash_values['BLAKE3']}")
+            log_hash(filename, hash_values['SHA-256'], hash_values['BLAKE3'])
     else:
         print(f"Invalid file or directory path: '{file_path}'.")
         sys.exit(1)
@@ -92,4 +115,4 @@ def main(file_path):
 
 if __name__ == '__main__':
     inputs = parse_args()
-    main(inputs.file)
+    main(inputs.file, inputs.log)
